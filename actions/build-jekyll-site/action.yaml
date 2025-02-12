@@ -1,5 +1,5 @@
-name: Build site
-description: Build the site
+name: Build Jekyll site
+description: Build a Jekyll site
 
 inputs:
   ruby-version:

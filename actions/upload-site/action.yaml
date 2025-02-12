@@ -1,0 +1,90 @@
+name: Upload site
+description: Upload the site to the AWS S3 bucket
+
+inputs:
+  aws-region:
+    description: The AWS region
+    required: true
+  aws-role:
+    description: The ARN of the AWS role to assume
+    required: true
+  bucket-name:
+    description: The name of the S3 bucket
+    required: true
+  cloudfront-distribution:
+    description: The CloudFront distribution
+    required: true
+  github-token:
+    description: The GitHub token
+    required: true
+  pr-number:
+    description: The PR number. Provides a base URL for the site. Leave empty for the main branch. 
+    default: ""
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install s3cmd
+      shell: bash
+      run: |
+        python -m pip install s3cmd
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        run-id: ${{ github.event.workflow_run.id }}
+        name: "site-build"
+        github-token: ${{ inputs.github-token }}
+
+    - name: Configure AWS
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{ inputs.aws-region }}
+        role-to-assume: ${{ inputs.aws-role }}
+
+    - name: Save target prefix to environment
+      shell: bash
+      run: |
+        TARGET="s3://${{ inputs.bucket-name }}/${{ inputs.pr-number }}/"
+        echo "TARGET=$TARGET" >> $GITHUB_ENV
+        echo $TARGET
+
+    - name: Identify whether the PR is already staged
+      shell: bash
+      run: |
+        count=$(aws s3 ls $TARGET | wc -l)
+        if [ $count > 1 ]; then
+          echo "Staging already exists"
+          echo EXISTS=0 >> $GITHUB_ENV
+        else
+          echo "Staging does not exist"
+          echo EXISTS=1 >> $GITHUB_ENV
+        fi
+
+    - name: Extract artifact
+      shell: bash
+      run: |
+        tar -xf site.tgz
+
+    # if we haven't staged before, just use aws s3 sync -- the smart stuff
+    # s3cmd sync tries to do can actually make it slower
+    - name: Sync to s3
+      shell: bash
+      run: |
+        if [ $EXISTS -eq 0 ]; then
+          aws s3 sync ./_site/ $TARGET
+        else
+          s3cmd sync ./_site/ $TARGET
+        fi
+
+    - name: Clean up CSS content type metadata
+      shell: bash
+      run: |
+        aws s3 cp $TARGET $TARGET --recursive --exclude "*" --include "*.css" --metadata-directive REPLACE --content-type "text/css"
+
+    - name: Perform cache invalidation
+      shell: bash
+      run: |
+        echo "Invalidating staging cache"
+        aws cloudfront create-invalidation --distribution-id ${{ inputs.cloudfront-distribution }} --paths "/*"
+
+
