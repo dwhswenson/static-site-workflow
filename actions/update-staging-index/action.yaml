@@ -1,0 +1,61 @@
+name: Update staging index
+description: Update the index.html at the root of the staging site
+
+inputs:
+  aws-region:
+    description: AWS region
+    required: true
+  aws-role:
+    description: AWS role to assume
+    required: true
+  website-url:
+    description: URL of the staging
+    required: true
+  bucket-name:
+    description: Name of the staging bucket
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{ inputs.aws-region }}
+        role-to-assume: ${{ inputs.aws-role }}
+
+    - name: Create index.html
+      shell: bash
+      run: |
+        index_html () {
+          echo "<html>"
+          echo "  <head>"
+          echo "    <title>Staged PRs</title>"
+          echo "  </head>"
+          echo "  <body>"
+          echo "    <h1>Staged PRs</h1>"
+          echo "    <ul>"
+
+          for PR in $(aws s3 ls ${{ inputs.bucket-name }} | sed 's/\ *PRE\ //g')
+          do
+            count=$(aws s3 ls ${{ inputs.bucket-name }}/$PR | wc -l)
+            echo -n "      <li><a href="${{ inputs.website-url }}/$PR">"
+            if [ $count -gt 1 ]
+            then
+              echo -n "<b>$PR</b>"
+            fi
+            echo "</a></li>"
+          done
+
+          echo "    </ul>"
+          echo "  </body>"
+          echo "</html>"
+        }
+
+        index_html > index.html
+        cat index.html
+
+    - name: Upload index.html
+      shell: bash
+      run: |
+        aws s3 cp index.html s3://${{ inputs.bucket-name }}/index.html
