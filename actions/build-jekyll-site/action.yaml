@@ -1,0 +1,56 @@
+name: Build site
+description: Build the site
+
+inputs:
+  ruby-version:
+    description: The version of Ruby to use
+    required: false
+    default: "3.0.0"
+  site-url:
+    description: The URL to the site
+    required: false
+    default: ""
+  base-url:
+    description: The base URL for the site
+    required: false
+    default: ""
+
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ inputs.ruby-version }}
+
+    - name: Install dependencies
+      shell: bash
+      run: bundle install
+
+    - name: Versions
+      shell: bash
+      run: |
+        ruby --version
+        cat Gemfile.lock
+
+    - name: Create jekyll config
+      shell: bash
+      run: |
+        echo "" > _extra_config.yml
+        if [ "${{ inputs.site_url }}" != "" ]; then
+          echo "url: ${{ inputs.site_url }}" >> _extra_config.yml
+        fi
+        if [ "${{ inputs.base_url }}" != "" ]; then
+          echo "baseurl: /${{ inputs.base_url }}" >> _extra_config.yml
+        fi
+        cat _extra_config.yml
+
+    - name: Build the site
+      shell: bash
+      run: bundle exec jekyll build --config "_config.yml,_extra_config.yml"
+
+    - name: Check links
+      uses: lycheeverse/lychee-action@v2
+      with:
+        fail: false  # TODO: change this once all the links pass!
+        args: --base ./_site --verbose --no-progress './_site/**/*.html'

@@ -1,0 +1,44 @@
+name: Get metadata
+description: Download and extract metadata from a previous workflow run
+
+inputs:
+  run-id:
+    description: The ID of the workflow run to download metadata from
+    required: true
+  github-token:
+    description: The GitHub token to use for downloading the artifact
+    required: true
+  name:
+    description: The name of the artifact to download
+    default: "metadata"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download metadata
+      uses: actions/download-artifact@v4
+      with:
+        run-id: ${{ inputs.run-id }}
+        name: ${{ inputs.name }}
+        github-token: ${{ inputs.github-token }}
+
+    - name: Get metadata
+      id: get-metadata
+      shell: bash
+      run: |
+        echo "PR_NUM=$(jq -r .pr metadata.json)" >> $GITHUB_ENV
+        echo "PR_HEADSHA=$(jq -r .sha metadata.json)" >> $GITHUB_ENV
+
+    - name: Show metadata
+      shell: bash
+      run: |
+        echo "PR_NUM=$PR_NUM"
+        echo "PR_HEADSHA=$PR_HEADSHA"
+
+    # TODO: this should validate the metadata: check that the commit SHA
+    # exists and that it is associated with the PR number. That still leaves
+    # open an attack by poisoning the artifact with a valid SHA and PR
+    # number, overwriting that PR's site. We should find a way to avoid that
+    # (maybe any workflow_run workflow that comes from a PR should check
+    # that the commit is correct, and any workflow that doesn't come from a
+    # PR should ensure that it isn't triggered by one?)

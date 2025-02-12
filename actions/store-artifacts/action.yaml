@@ -1,0 +1,44 @@
+name: Store artifacts
+description: Store site and metadata artifacts
+
+inputs:
+  site-dir:
+    description: The directory containing the built site
+    required: true
+  retention-days: 
+    description: The number of days to retain the artifacts
+    required: false
+    default: 1
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Make artifact
+      shell: bash
+      run: tar czf site.tgz ${{ inputs.site-dir }}
+
+    - name: Upload artifact
+      if: ${{ github.event_name != 'schedule' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: site-build
+        path: site.tgz
+        if-no-files-found: error
+        retention-days: ${{ inputs.retention-days }}
+
+    - name: Store GitHub Metadata (PR only)
+      if: ${{ github.event_name == 'pull_request' }}
+      shell: bash
+      env:
+        GITHUB_HEAD_REF: ${{ github.head_ref }}
+      run: |
+        echo '{"pr": ${{ github.event.pull_request.number }}, "sha": "${{ github.event.pull_request.head.sha }}"}' > metadata.json
+
+    - name: Upload Metadata (PR only)
+      if: ${{ github.event_name == 'pull_request' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: metadata
+        path: metadata.json
+        if-no-files-found: error
+        retention-days: ${{ inputs.retention-days }}
