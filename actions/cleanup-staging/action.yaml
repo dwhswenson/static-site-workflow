@@ -16,6 +16,7 @@ runs:
   using: 'composite'
   steps:
     - name: Install s3cmd
+      shell: bash
       run: |
         python -m pip install s3cmd
     - name: Configure AWS
@@ -24,11 +25,13 @@ runs:
         aws-region: ${{ inputs.aws-region }}
         role-to-assume: ${{ inputs.aws-role }}
     - name: Delete contents of PR folder in staging bucket
+      shell: bash
       run: |
         PR_NUM=${{ github.event.pull_request.number }}
         echo "PR=$PR_NUM"
         s3cmd del --recursive s3://${{ inputs.bucket-name }}/$PR_NUM/
     - name: Add file to indicate cleanup
+      shell: bash
       run: |
         PR_NUM=${{ github.event.pull_request.number }}
         echo "PR=$PR_NUM"
