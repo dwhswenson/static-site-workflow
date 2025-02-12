@@ -55,7 +55,8 @@ runs:
     - name: Identify whether the PR is already staged
       shell: bash
       run: |
-        count=$(aws s3 ls $TARGET | wc -l)
+        # or with echo -n to avoid nonzero exit code if target doesn't exist
+        count=$(aws s3 ls $TARGET || echo -n | wc -l)
         if [ $count > 1 ]; then
           echo "Target already exists"
           echo EXISTS=0 >> $GITHUB_ENV
