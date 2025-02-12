@@ -44,7 +44,11 @@ runs:
     - name: Save target prefix to environment
       shell: bash
       run: |
-        TARGET="s3://${{ inputs.bucket-name }}/${{ inputs.pr-number }}/"
+        if [ -z "${{ inputs.pr-number }}" ]; then
+          TARGET="s3://${{ inputs.bucket-name }}/"
+        else
+          TARGET="s3://${{ inputs.bucket-name }}/${{ inputs.pr-number }}/"
+        fi
         echo "TARGET=$TARGET" >> $GITHUB_ENV
         echo $TARGET
 
@@ -53,10 +57,10 @@ runs:
       run: |
         count=$(aws s3 ls $TARGET | wc -l)
         if [ $count > 1 ]; then
-          echo "Staging already exists"
+          echo "Target already exists"
           echo EXISTS=0 >> $GITHUB_ENV
         else
-          echo "Staging does not exist"
+          echo "Target does not exist"
           echo EXISTS=1 >> $GITHUB_ENV
         fi
 
@@ -86,5 +90,3 @@ runs:
       run: |
         echo "Invalidating staging cache"
         aws cloudfront create-invalidation --distribution-id ${{ inputs.cloudfront-distribution }} --paths "/*"
-
-
