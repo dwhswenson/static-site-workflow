@@ -1,0 +1,48 @@
+name: Cleanup staging
+description: Replace staged site with a single HTML file informing that the PR is closed.
+
+inputs:
+  aws-region:
+    description: The AWS region to use
+    required: true
+  aws-role:
+    description: The AWS role to use
+    required: true
+  bucket-name:
+    description: The name of the staging bucket
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install s3cmd
+      run: |
+        python -m pip install s3cmd
+    - name: Configure AWS
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{ inputs.aws-region }}
+        role-to-assume: ${{ inputs.aws-role }}
+    - name: Delete contents of PR folder in staging bucket
+      run: |
+        PR_NUM=${{ github.event.pull_request.number }}
+        echo "PR=$PR_NUM"
+        s3cmd del --recursive s3://${{ inputs.bucket-name }}/$PR_NUM/
+    - name: Add file to indicate cleanup
+      run: |
+        PR_NUM=${{ github.event.pull_request.number }}
+        echo "PR=$PR_NUM"
+        cat <<- EOF > pr-index.html
+          <html>
+            <head>
+              <title>Pull Request $PR_NUM has been closed</title>
+            </head>
+            <body>
+              <p>The staging site here has been deleted because the
+              associated pull request, <a href="">#$PR_NUM</a>, has been
+              merged or closed</p>
+            </body>
+          </html>
+        EOF
+        s3cmd put pr-index.html s3://${{ inputs.bucket-name }}/$PR_NUM/index.html
+
