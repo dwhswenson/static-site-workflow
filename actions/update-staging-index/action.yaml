@@ -36,16 +36,14 @@ runs:
           echo "    <h1>Staged PRs</h1>"
           echo "    <ul>"
 
-          for PR in $(aws s3 ls ${{ inputs.bucket-name }} | sed 's/\ *PRE\ //g')
+          for PR in $(aws s3 ls ${{ inputs.bucket-name }} | grep -v "index.html" | sed 's/\ *PRE\ //g')
           do
-            echo "PR: $PR"
             count=$(aws s3 ls ${{ inputs.bucket-name }}/$PR | wc -l)
-            echo "Count: $count"
             if [ $count -gt 1 ]
             then
-              #echo -n "      <li><a href=\"${{ inputs.website-url }}/$PR\">"
+              echo -n "      <li><a href=\"${{ inputs.website-url }}/$PR\">"
               echo -n "<b>$PR</b>"
-              #echo "</a></li>"
+              echo "</a></li>"
             fi
           done
 
