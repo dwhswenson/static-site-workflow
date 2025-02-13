@@ -9,7 +9,7 @@ inputs:
     description: AWS role to assume
     required: true
   website-url:
-    description: URL of the staging
+    description: URL of the staging website
     required: true
   bucket-name:
     description: Name of the staging bucket
@@ -38,13 +38,15 @@ runs:
 
           for PR in $(aws s3 ls ${{ inputs.bucket-name }} | sed 's/\ *PRE\ //g')
           do
+            echo "PR: $PR"
             count=$(aws s3 ls ${{ inputs.bucket-name }}/$PR | wc -l)
-            echo -n "      <li><a href="${{ inputs.website-url }}/$PR">"
+            echo "Count: $count"
             if [ $count -gt 1 ]
             then
+              echo -n "      <li><a href="${{ inputs.website-url }}/$PR">"
               echo -n "<b>$PR</b>"
+              echo "</a></li>"
             fi
-            echo "</a></li>"
           done
 
           echo "    </ul>"
