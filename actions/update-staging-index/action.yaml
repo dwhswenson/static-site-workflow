@@ -43,7 +43,7 @@ runs:
             echo "Count: $count"
             if [ $count -gt 1 ]
             then
-              echo -n "      <li><a href="${{ inputs.website-url }}/$PR">"
+              echo -n "      <li><a href=\"${{ inputs.website-url }}/$PR\">"
               echo -n "<b>$PR</b>"
               echo "</a></li>"
             fi
